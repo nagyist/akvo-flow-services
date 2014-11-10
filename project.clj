@@ -16,6 +16,8 @@
                  [me.raynes/fs "1.4.6"]
                  [clj-aws-s3 "0.3.9" :exclusions [joda-time]]
                  [clj-http "1.0.0"]
+                 [markdown-clj "0.9.55" :exclusions [org.clojure/clojure]]
+                 [hiccup "1.0.5"]
                  ; Java libraries
                  [jfree/jfreechart "1.0.13"]
                  [org.apache.poi/poi "3.8"]
