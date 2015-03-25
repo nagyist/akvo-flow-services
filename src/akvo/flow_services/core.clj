@@ -23,9 +23,10 @@
                         [uploader :as uploader]
                         [cascade :as cascade]
                         [config :as config]
-                        [stats :as stats]]
+                        [stats :as stats]
+                        [appapi :as appapi]]
     [clojure.tools.nrepl.server :as nrepl]
-    [taoensso.timbre :as timbre])
+    [taoensso.timbre :as timbre :refer (debugf)])
   (:gen-class))
 
 (defn- generate-report [criteria callback]
@@ -100,13 +101,20 @@
   (POST "/reload" [params]
     (config/reload (:config-folder @config/settings)))
 
+  (POST "/appcode" req
+    (appapi/create-code req))
+
+  (GET "/appcode/:code" [code]
+    (appapi/appcode code))
+
   (route/resources "/")
 
   (route/not-found "Page not found"))
 
 (defn init []
   (quartzite-scheduler/initialize)
-  (quartzite-scheduler/start))
+  (quartzite-scheduler/start)
+  (appapi/init))
 
 (def app (handler/site endpoints))
 

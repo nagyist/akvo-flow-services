@@ -7,6 +7,7 @@
   :dependencies [[org.clojure/clojure "1.6.0"]
                  [org.clojure/data.csv "0.1.2"]
                  [org.clojure/tools.nrepl "0.2.5"]
+                 [org.clojure/data.codec "0.1.0"]
                  [com.taoensso/timbre "3.3.1"]
                  [cheshire "5.3.1"]
                  [compojure "1.1.8"]
@@ -29,7 +30,7 @@
                  [com.google.gdata/core "1.47.1"]
                  [org.xerial/sqlite-jdbc "3.7.2"]
                  ; Akvo FLOW dependencies
-                 [exporterapplet "1.8.2"]
+                 [exporterapplet "1.6.0"]
                  [org.json/json "20090211"]
                  [log4j/log4j "1.2.16"]
                  ; Configuration and Stats
