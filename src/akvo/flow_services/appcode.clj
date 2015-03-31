@@ -1,5 +1,5 @@
 
-(ns akvo.flow-services.appapi
+(ns akvo.flow-services.appcode
   (:require [clojure.walk :refer (stringify-keys)]
     [clojure.java.jdbc :refer [db-do-commands create-table-ddl execute! query print-sql-exception]]
     [clojure.java.io :as io]
@@ -11,6 +11,8 @@
            javax.crypto.Mac
            java.sql.SQLException))
 
+(defonce auth false); Temporary var to bypass authentication. We need to figure out which auth mechanism we'll use first.
+
 (defonce db-path ".")
 (defonce db-name "appcodes.sqlite")
 (defonce db-spec
@@ -18,8 +20,6 @@
    :subprotocol "sqlite"
    :subname  (str db-path "/" db-name)
    :db-name  db-name})
-
-(defonce sqlite-error-constraint 19); https://www.sqlite.org/c3ref/c_abort.html
 
 (defn generate-hmac [message secret]
   (let [mac (Mac/getInstance "HmacSHA1")
@@ -36,14 +36,16 @@
     true))
 
 (defn authenticate [req]
-  (let [authorization (get-in req [:headers "authorization"])
-        date (get-in req [:headers "date"])
-        uri (:uri req)
-        method "POST"
-        instance (get-in req [:params :instance])]
-    (if (and authorization uri method date instance)
-      (validate-auth authorization method date uri instance)
-      false)))
+  (if auth
+    (let [authorization (get-in req [:headers "authorization"])
+          date (get-in req [:headers "date"])
+          uri (:uri req)
+          method "POST"
+          instance (get-in req [:params :instance])]
+      (if (and authorization uri method date instance)
+        (validate-auth authorization method date uri instance)
+        false)))
+    true)
 
 (defn- create-db []
   (debugf "Creating db %s" db-spec)

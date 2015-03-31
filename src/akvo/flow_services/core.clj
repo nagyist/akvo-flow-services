@@ -24,7 +24,7 @@
                         [cascade :as cascade]
                         [config :as config]
                         [stats :as stats]
-                        [appapi :as appapi]]
+                        [appcode :as appcode]]
     [clojure.tools.nrepl.server :as nrepl]
     [taoensso.timbre :as timbre :refer (debugf)])
   (:gen-class))
@@ -102,10 +102,10 @@
     (config/reload (:config-folder @config/settings)))
 
   (POST "/appcode" req
-    (appapi/create-code req))
+    (appcode/create-code req))
 
   (GET "/appcode/:code" [code]
-    (appapi/appcode code))
+    (appcode/appcode code))
 
   (route/resources "/")
 
@@ -114,7 +114,7 @@
 (defn init []
   (quartzite-scheduler/initialize)
   (quartzite-scheduler/start)
-  (appapi/init))
+  (appcode/init))
 
 (def app (handler/site endpoints))
 
