@@ -166,9 +166,16 @@
       (errorf "Failed to notify %s after %s attempts" server max-retries))))
 
 (defn- bulk-survey
-  [path bucket-name filename]
+  [path bucket-name filename appId]
   (infof "Bulk upload - path: %s - bucket: %s - file: " path bucket-name filename)
-  (let [data (group-by #(nth (str/split % #"\t") 11) ;; 12th column contains the UUID
+  (let [appDir (first (fs/find-files path (re-pattern appId)))
+        singleApp? (and appDir (fs/directory? appDir))
+        path (if singleApp? (.getAbsolutePath appDir) path); Use app-specific directory if found
+        files (cons (get-zip-files path)
+                    (if singleApp? (get-zip-files (str/replace path (re-pattern appId) "files")))); Backwards compatible search
+        images (cons (get-images path)
+                     (if singleApp? (get-images (str/replace path (re-pattern appId) "media")))); Backwards compatible search
+        data (group-by #(nth (str/split % #"\t") 11) ;; 12th column contains the UUID
                (remove nil?
                  (distinct (mapcat get-data (get-zip-files path)))))
         server (:domain (@config/configs bucket-name))]
@@ -178,20 +185,20 @@
       (fsc/zip fzip ["data.txt" (str/join "\n" (data k))])
       (upload fzip bucket-name)
       (future (notify-gae server {"action" "submit" "fileName" (.getName fzip)})))
-    (doseq [f (get-images path)]
+    (doseq [f images]
       (upload f bucket-name))
     (add-message bucket-name "bulkUpload" nil (format "File: %s processed" filename))))
 
 
 (defn bulk-upload
   "Combines the parts, extracts and uploads the content of a zip file"
-  [base-url unique-identifier filename upload-domain surveyId]
+  [base-url unique-identifier filename upload-domain surveyId appId]
   (let [path (format "%s/%s" (get-path) unique-identifier)
         uname (str/upper-case filename)
         bucket-name (config/get-bucket-name upload-domain)]
     (combine path filename)
     (cleanup path)
     (cond
-      (.endsWith uname "ZIP") (bulk-survey (unzip-file path filename) bucket-name filename) ; Extract and upload
+      (.endsWith uname "ZIP") (bulk-survey (unzip-file path filename) bucket-name filename appId) ; Extract and upload
       (.endsWith uname "XLSX") (raw-data (io/file path filename) base-url bucket-name surveyId) ; Upload raw data
       :else (upload (io/file path) bucket-name))))

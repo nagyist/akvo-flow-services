@@ -63,8 +63,8 @@
 
 
 (jobs/defjob BulkUploadJob [job-data]
-  (let [{:strs [baseURL uniqueIdentifier filename uploadDomain surveyId id]} (conversion/from-job-data job-data)]
-    (bulk-upload baseURL uniqueIdentifier filename uploadDomain surveyId)
+  (let [{:strs [baseURL uniqueIdentifier filename uploadDomain surveyId id appId]} (conversion/from-job-data job-data)]
+    (bulk-upload baseURL uniqueIdentifier filename uploadDomain surveyId appId)
     (scheduler/delete-job (jobs/key id))))
 
 (defn- report-id [m]

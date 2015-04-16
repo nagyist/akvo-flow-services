@@ -44,7 +44,8 @@
         s3bucket (get props "s3bucket")
         apiKey (get props "restPrivateKey")
         domain (format "%s.appspot.com" app-id)]
-    {:alias app-alias
+    {:appId app-id
+     :alias app-alias
      :domain domain
      :access-key access-key
      :secret-key secret-key

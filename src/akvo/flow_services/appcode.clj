@@ -4,6 +4,7 @@
     [clojure.java.jdbc :refer [db-do-commands create-table-ddl execute! query print-sql-exception]]
     [clojure.java.io :as io]
     [clojure.data.codec.base64 :as b64]
+    [ring.util.response :refer (response charset content-type status)]
     [cheshire.core :as json]
     [akvo.flow-services [config :as config]]
     [taoensso.timbre :as timbre :refer (debugf errorf)])
@@ -20,6 +21,20 @@
    :subprotocol "sqlite"
    :subname  (str db-path "/" db-name)
    :db-name  db-name})
+
+(defn json-response [data]
+  (->
+    data
+    json/generate-string
+    response
+    (content-type "application/json")
+    (charset "UTF-8")))
+
+(defn error-response [status-code msg]
+  (->
+    {:error msg}
+    json-response
+    (status status-code)))
 
 (defn generate-hmac [message secret]
   (let [mac (Mac/getInstance "HmacSHA1")
@@ -54,34 +69,49 @@
       (create-table-ddl :code
         [:code :integer "PRIMARY KEY"]
         [:instance :text]; TODO: Add an index in this column
-        [:expiration :integer]))
+        [:name :text]))
        (catch Exception e
          (errorf e "Error creating database %s" db-spec))))
 
-(defn generate-code [instance expiration]
+(defn generate-code [instance name]
   (let [code (rand-int 1000000000)
-        rows (first (execute! db-spec ["INSERT OR IGNORE INTO code(code, instance, expiration) VALUES(?,?,?)" code instance expiration]))]
-    (if (= 1 rows)
-      (str "" code)
-      (generate-code instance expiration))))
+        res (first (execute! db-spec ["INSERT OR IGNORE INTO code(code, instance, name) VALUES(?,?,?)" code instance name]))]
+    (if (= 1 res)
+      code
+      (generate-code instance name))))
 
-(defn- get-instance [code]
-  (:instance (first (query db-spec ["SELECT instance FROM code WHERE code = ?" code]))))
-
-(defn appcode [code]
-  (debugf (str "load-conf: " code))
-  (let [instance (get-instance code)
+(defn appconfig [code]
+  (let [row (first (query db-spec ["SELECT instance FROM code WHERE code = ?" code]))
+        instance (:instance row)
         conf (get @config/configs instance)]
-        (if conf
-          (str (json/generate-string conf))
-          (str "instance " code " not found"))))
+    (if conf
+      (json-response (assoc conf
+                            :serverBase (str "https://" (:appId conf) ".appspot.com" )))
+      (error-response 404 "not found"))))
 
-(defn create-code [req]
-  (if (authenticate req)
-    (let [instance (get-in req [:params :instance]); TODO: would it make sense to return this var from the authentication function?
-          expiration (get-in req [:params :expiration])]
-      (generate-code instance expiration))
-    "Unauthorized"))
+(defn get-code [code]
+  (let [row (first (query db-spec ["SELECT * FROM code WHERE code = ?" code]))]
+    (if row
+      (json-response row)
+      (error-response 404 "code not found"))))
+
+(defn create-code [params]
+  (let [{instance :instance name :name} params
+        found (get @config/configs instance)]
+    (if found
+      (get-code (generate-code instance name))
+      (error-response 400 "invalid appId"))))
+
+(defn list-codes [params]
+  (let [{instance :instance} params
+        rows (query db-spec ["SELECT code, name FROM code WHERE instance = ?" instance])]
+    (json-response rows)))
+
+(defn delete-code [code]
+  (let [rows (first (execute! db-spec ["DELETE FROM code WHERE code = ?" code]))]
+    (if (pos? rows)
+      (json-response {})
+      (error-response 404 "code not found"))))
 
 (defn init []
   ; Initialise SQLite DB, if necessary

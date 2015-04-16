@@ -13,7 +13,7 @@
 ;  The full license text can also be seen at <http://www.gnu.org/licenses/agpl.html>.
 
 (ns akvo.flow-services.core
-  (:require [compojure.core :refer (defroutes GET POST OPTIONS)]
+  (:require [compojure.core :refer (defroutes GET POST DELETE OPTIONS)]
     [ring.util.response :refer (response charset content-type header)]
     [ring.adapter.jetty :refer (run-jetty)]
     [cheshire.core :as json]
@@ -101,11 +101,20 @@
   (POST "/reload" [params]
     (config/reload (:config-folder @config/settings)))
 
-  (POST "/appcode" req
-    (appcode/create-code req))
+  (POST "/appcode" {params :params}
+    (appcode/create-code params))
+
+  (GET "/appcode" {params :params}
+    (appcode/list-codes params))
+
+  (DELETE "/appcode/:code" [code]
+    (appcode/delete-code code))
 
   (GET "/appcode/:code" [code]
-    (appcode/appcode code))
+    (appcode/get-code code))
+
+  (GET "/appcode/appconfig/:code" [code]
+    (appcode/appconfig code))
 
   (route/resources "/")
 
