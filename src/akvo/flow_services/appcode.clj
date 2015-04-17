@@ -24,7 +24,8 @@
         luhm-sum (reduce + (map-indexed (fn [idx elem] (if (= (even? idx) (even? n))
                                                        (if (< elem 5) (* elem 2) (inc (mod (* elem 2) 10)))
                                                        elem)) digits))
-        check-digit (- 10 (mod luhm-sum 10))
+        units-digit (mod luhm-sum 10)
+        check-digit (if (zero? units-digit) 0 (- 10 units-digit))
         digits (concat digits [check-digit])]
     (long (reduce + (map-indexed (fn [idx elem] (* elem (Math/pow 10 (- (dec n) idx)))) digits)))))
 
