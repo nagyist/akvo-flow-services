@@ -9,6 +9,7 @@
     [taoensso.timbre :as timbre :refer (debugf errorf)])
   (:import java.sql.SQLException))
 
+(defonce code-length 8)
 (defonce db-path ".")
 (defonce db-name "appcodes.sqlite")
 (defonce db-spec
@@ -16,6 +17,16 @@
    :subprotocol "sqlite"
    :subname  (str db-path "/" db-name)
    :db-name  db-name})
+
+(defn random-code [n]
+  (let [prefix (inc (rand-int 9)); Lead digit mustn't be 0
+        digits (cons prefix (map #(+ (rand-int 10) %) (int-array (- n 2) 0)))
+        luhm-sum (reduce + (map-indexed (fn [idx elem] (if (= (even? idx) (even? n))
+                                                       (if (< elem 5) (* elem 2) (inc (mod (* elem 2) 10)))
+                                                       elem)) digits))
+        check-digit (- 10 (mod luhm-sum 10))
+        digits (concat digits [check-digit])]
+    (long (reduce + (map-indexed (fn [idx elem] (* elem (Math/pow 10 (- (dec n) idx)))) digits)))))
 
 (defn json-response [data]
   (->
@@ -43,7 +54,7 @@
          (errorf e "Error creating database %s" db-spec))))
 
 (defn generate-code [instance name]
-  (let [code (rand-int 1000000000)
+  (let [code (random-code code-length)
         res (first (execute! db-spec ["INSERT OR IGNORE INTO code(code, instance, name) VALUES(?,?,?)" code instance name]))]
     (if (= 1 res)
       code
