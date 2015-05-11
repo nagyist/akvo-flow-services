@@ -17,14 +17,13 @@
     [akvo.flow-services [config :as config]]
     [taoensso.timbre :as timbre :refer (debugf errorf)]
     [ring.util.response :refer (response status)])
-  (:import [com.nimbusds.jwt SignedJWT]
-           [com.nimbusds.jose.jwk RSAKey]
-           [com.nimbusds.jose.crypto RSASSAVerifier]))
+  (:import com.nimbusds.jwt.SignedJWT
+           com.nimbusds.jose.jwk.RSAKey
+           com.nimbusds.jose.crypto.RSASSAVerifier))
 
 (def rsa (RSAKey/parse (slurp "keycloak.cert")))
 
 (defn validate-token [token]
-  (debugf (str "Validating token: " token))
   (let [jwt (SignedJWT/parse token)
         verifier (RSASSAVerifier. (.toRSAPublicKey rsa))]
     (.verify jwt verifier)))
@@ -33,8 +32,7 @@
   (let [auth-header (get-in req [:headers "authorization"])
         token (if (and (not (str/blank? auth-header))
                        (.startsWith auth-header "Bearer "))
-                (.substring auth-header 7)
-                nil)]
+                (.substring auth-header 7))]
     (if token
       (validate-token token)
       false)))
