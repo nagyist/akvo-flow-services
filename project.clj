@@ -36,7 +36,8 @@
                  ; Configuration and Stats
                  [com.google.appengine/appengine-tools-sdk "1.9.18"]
                  [com.google.appengine/appengine-remote-api "1.9.18"]
-                 [com.google.appengine/appengine-api-1.0-sdk "1.9.18"]]
+                 [com.google.appengine/appengine-api-1.0-sdk "1.9.18"]
+                 [com.nimbusds/nimbus-jose-jwt "3.10"]]
 
   :main akvo.flow-services.core
   :aot [akvo.flow-services.core]
