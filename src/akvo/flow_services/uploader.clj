@@ -23,8 +23,8 @@
             [me.raynes.fs.compression :as fsc]
             [aws.sdk.s3 :as s3]
             [clj-http.client :as http]
-            [akvo.flow-services.config :as config]
-            [akvo.flow-services.gae :as gae]
+            [akvo.commons.config :as config]
+            [akvo.commons.gae :as gae]
             [taoensso.timbre :as timbre :refer (debugf infof errorf)]))
 
 
@@ -93,7 +93,7 @@
     (str prefix fname)))
 
 (defn- upload [f bucket-name]
-  (let [creds (select-keys (@config/configs bucket-name) [:access-key :secret-key])
+  (let [creds (select-keys (config/find-config bucket-name) [:access-key :secret-key])
         obj-key (get-key f)]
     (debugf "Uploading file: %s - bucket: %s" f bucket-name)
     (if (.startsWith obj-key "images/")
@@ -102,11 +102,15 @@
 
 (defn add-message [bucket-name action obj-id content]
   (let [settings @config/settings
-        config (@config/configs bucket-name)
+        config (config/find-config bucket-name)
         msg {"actionAbout" action
              "objectId" (if obj-id (Long/parseLong obj-id))
              "shortMessage" content}]
-    (gae/put! (:domain config) (:username settings) (:password settings) "Message" msg)))
+    (gae/with-datastore [ds {:server (:domain config)
+                             :email (:username settings)
+                             :password (:password settings)
+                             :port 443}]
+      (gae/put! ds "Message" msg))))
 
 (defn- raw-data
   [f base-url bucket-name surveyId]
@@ -132,6 +136,15 @@
   (->> fcoll
     (remove #(.contains (.getAbsolutePath %) "__MACOSX"))
     (remove #(.contains (.getName %) "wfpGenerated"))))
+
+(defn get-format
+  "Determine whether the zip file contains JSON or TSV data"
+  [f]
+  (with-open [zf (ZipFile. f)]
+    (cond
+      (.getEntry zf "data.json") :json
+      (.getEntry zf "data.txt") :tsv
+      :else nil)))
 
 (defn- get-zip-files
   [path]
@@ -168,21 +181,17 @@
 (defn- bulk-survey
   [path bucket-name filename appId]
   (infof "Bulk upload - path: %s - bucket: %s - file: " path bucket-name filename)
-  (let [appDir (first (fs/find-files path (re-pattern appId)))
-        singleApp? (and appDir (fs/directory? appDir))
-        path (if singleApp? (.getAbsolutePath appDir) path); Use app-specific directory if found
-        files (cons (get-zip-files path)
-                    (if singleApp? (get-zip-files (str/replace path (re-pattern appId) "files")))); Backwards compatible search
-        images (cons (get-images path)
-                     (if singleApp? (get-images (str/replace path (re-pattern appId) "media")))); Backwards compatible search
-        data (group-by #(nth (str/split % #"\t") 11) ;; 12th column contains the UUID
-               (remove nil?
-                 (distinct (mapcat get-data (get-zip-files path)))))
-        server (:domain (@config/configs bucket-name))]
-    (doseq [k (keys data)
+  (let [files (group-by get-format (get-zip-files path))
+        tsv-data (group-by #(nth (str/split % #"\t") 11) ;; 12th column contains the UUID
+                           (remove nil? (distinct (mapcat get-data (:tsv files)))))
+        server (:domain (config/find-config bucket-name))]
+    (doseq [file (:json files)]
+      (upload file bucket-name)
+      (future (notify-gae server {"action" "submit" "fileName" (.getName file)})))
+    (doseq [k (keys tsv-data)
             :let [fname (format "/tmp/%s.zip" k)
                   fzip (io/file fname)]]
-      (fsc/zip fzip ["data.txt" (str/join "\n" (data k))])
+      (fsc/zip fzip ["data.txt" (str/join "\n" (tsv-data k))])
       (upload fzip bucket-name)
       (future (notify-gae server {"action" "submit" "fileName" (.getName fzip)})))
     (doseq [f images]
