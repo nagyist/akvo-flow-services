@@ -24,7 +24,8 @@
                         [cascade :as cascade]
                         [config :as config]
                         [stats :as stats]
-                        [appcode :as appcode]]
+                        [appcode :as appcode]
+                        [auth :as auth]]
     [clojure.tools.nrepl.server :as nrepl]
     [taoensso.timbre :as timbre :refer (debugf)])
   (:gen-class))
@@ -101,15 +102,17 @@
   (POST "/reload" [params]
     (config/reload (:config-folder @config/settings)))
 
-  (POST "/appcode" {params :params}
-    (appcode/create-code params))
+  (POST "/appcode" req
+    ((auth/wrap-auth appcode/create-code) req))
 
-  (GET "/appcode" {params :params}
-    (appcode/list-codes params))
+  (GET "/appcode" req
+    ((auth/wrap-auth appcode/list-codes) req))
 
+  ; TODO: Wrap handler with auth
   (DELETE "/appcode/:code" [code]
     (appcode/delete-code code))
 
+  ; TODO: Wrap handler with auth
   (GET "/appcode/:code" [code]
     (appcode/get-code code))
 

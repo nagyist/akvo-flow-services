@@ -1,3 +1,16 @@
+;  Copyright (C) 2015 Stichting Akvo (Akvo Foundation)
+;
+;  This file is part of Akvo FLOW.
+;
+;  Akvo FLOW is free software: you can redistribute it and modify it under the terms of
+;  the GNU Affero General Public License (AGPL) as published by the Free Software Foundation,
+;  either version 3 of the License or any later version.
+;
+;  Akvo FLOW is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+;  without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+;  See the GNU Affero General Public License included below for more details.
+;
+;  The full license text can also be seen at <http://www.gnu.org/licenses/agpl.html>.
 
 (ns akvo.flow-services.appcode
   (:require [clojure.walk :refer (stringify-keys)]
@@ -76,14 +89,14 @@
       (json-response row)
       (error-response 404 "code not found"))))
 
-(defn create-code [params]
+(defn create-code [{params :params}]
   (let [{instance :instance name :name} params
         found (get @config/configs instance)]
     (if found
       (get-code (generate-code instance name))
       (error-response 400 "invalid appId"))))
 
-(defn list-codes [params]
+(defn list-codes [{params :params}]
   (let [{instance :instance} params
         rows (query db-spec ["SELECT code, name FROM code WHERE instance = ?" instance])]
     (json-response rows)))
