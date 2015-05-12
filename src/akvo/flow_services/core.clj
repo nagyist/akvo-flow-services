@@ -19,13 +19,12 @@
     [cheshire.core :as json]
     [compojure [handler :as handler] [route :as route]]
     [clojurewerkz.quartzite.scheduler :as quartzite-scheduler]
-    [akvo.commons.config :as config]
+    [akvo.commons [config :as config] [auth :as auth]]
     [akvo.flow-services [scheduler :as scheduler]
                         [uploader :as uploader]
                         [cascade :as cascade]
                         [stats :as stats]
-                        [appcode :as appcode]
-                        [auth :as auth]]
+                        [appcode :as appcode]]
     [clojure.tools.nrepl.server :as nrepl]
     [taoensso.timbre :as timbre :refer (debugf)])
   (:gen-class))

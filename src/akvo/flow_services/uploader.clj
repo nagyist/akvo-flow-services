@@ -154,6 +154,18 @@
   [path]
   (filter-files (fs/find-files path #".*\.(jpg|JPG|jpeg|JPEG)$")))
 
+(defn- get-files
+  [path appId]
+  (let [appDir (first (fs/find-files path (re-pattern appId)))
+        singleApp? (and appDir (fs/directory? appDir))
+        path (if singleApp? (.getAbsolutePath appDir) path); Use app-specific directory if found
+        files (cons (get-zip-files path)
+                    (if singleApp? (get-zip-files (str/replace path (re-pattern appId) "files")))); Backwards compatible search
+        images (cons (get-images path)
+                     (if singleApp? (get-images (str/replace path (re-pattern appId) "media"))))]; Backwards compatible search]
+    (assoc (group-by get-format files)
+           {:images images})))
+
 (defn query-string
   [params]
   (->> params
@@ -181,7 +193,7 @@
 (defn- bulk-survey
   [path bucket-name filename appId]
   (infof "Bulk upload - path: %s - bucket: %s - file: " path bucket-name filename)
-  (let [files (group-by get-format (get-zip-files path))
+  (let [files (get-files path appId)
         tsv-data (group-by #(nth (str/split % #"\t") 11) ;; 12th column contains the UUID
                            (remove nil? (distinct (mapcat get-data (:tsv files)))))
         server (:domain (config/find-config bucket-name))]
@@ -194,7 +206,7 @@
       (fsc/zip fzip ["data.txt" (str/join "\n" (tsv-data k))])
       (upload fzip bucket-name)
       (future (notify-gae server {"action" "submit" "fileName" (.getName fzip)})))
-    (doseq [f images]
+    (doseq [f (:images files)]
       (upload f bucket-name))
     (add-message bucket-name "bulkUpload" nil (format "File: %s processed" filename))))
 
