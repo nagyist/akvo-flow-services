@@ -18,7 +18,7 @@
     [clojure.java.io :as io]
     [ring.util.response :refer (response charset content-type status)]
     [cheshire.core :as json]
-    [akvo.flow-services [config :as config]]
+    [akvo.commons [config :as config]]
     [taoensso.timbre :as timbre :refer (debugf errorf)])
   (:import java.sql.SQLException))
 
@@ -67,20 +67,20 @@
        (catch Exception e
          (errorf e "Error creating database %s" db-spec))))
 
-(defn generate-code [instance name]
+(defn generate-code [appId name]
   (let [code (random-code code-length)
-        res (first (execute! db-spec ["INSERT OR IGNORE INTO code(code, instance, name) VALUES(?,?,?)" code instance name]))]
+        res (first (execute! db-spec ["INSERT OR IGNORE INTO code(code, instance, name) VALUES(?,?,?)" code appId name]))]
     (if (= 1 res)
       code
-      (generate-code instance name))))
+      (generate-code appId name))))
 
 (defn appconfig [code]
   (let [row (first (query db-spec ["SELECT instance FROM code WHERE code = ?" code]))
-        instance (:instance row)
-        conf (get @config/configs instance)]
+        appId (:instance row)
+        conf (get @config/configs appId)]
     (if conf
       (json-response (assoc conf
-                            :serverBase (str "https://" (:appId conf) ".appspot.com" )))
+                            :serverBase (str "https://" (:app-id conf) ".appspot.com" )))
       (error-response 404 "not found"))))
 
 (defn get-code [code]
@@ -90,15 +90,15 @@
       (error-response 404 "code not found"))))
 
 (defn create-code [{params :params}]
-  (let [{instance :instance name :name} params
-        found (get @config/configs instance)]
+  (let [{appId :appId name :name} params
+        found (get @config/configs appId)]
     (if found
-      (get-code (generate-code instance name))
+      (get-code (generate-code appId name))
       (error-response 400 "invalid appId"))))
 
 (defn list-codes [{params :params}]
-  (let [{instance :instance} params
-        rows (query db-spec ["SELECT code, name FROM code WHERE instance = ?" instance])]
+  (let [{appId :appId} params
+        rows (query db-spec ["SELECT code, name FROM code WHERE instance = ?" appId])]
     (json-response rows)))
 
 (defn delete-code [code]
