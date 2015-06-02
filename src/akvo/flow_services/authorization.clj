@@ -13,11 +13,15 @@
 ;  The full license text can also be seen at <http://www.gnu.org/licenses/agpl.html>.
 
 (ns akvo.flow-services.authorization
-  (:require [ring.util.response :refer (response status)])
+  (:require [ring.util.response :refer [response status]]
+            [taoensso.timbre :refer [errorf]])
   (:import com.nimbusds.jwt.SignedJWT))
 
 (defn get-roles [token]
-  (if-let [jwt (if token (SignedJWT/parse token) nil)]
+  (if-let [jwt (try 
+                 (SignedJWT/parse token)
+                (catch Exception e
+                  (errorf "Error parsing JWT" e)))]
     (set (get-in 
            (-> jwt .getJWTClaimsSet (.getClaim "resource_access"))
            ["akvoflow" "roles"]))))
