@@ -13,7 +13,7 @@
 ;  The full license text can also be seen at <http://www.gnu.org/licenses/agpl.html>.
 
 (ns akvo.flow-services.core
-  (:require [compojure.core :refer (defroutes GET POST DELETE OPTIONS)]
+  (:require [compojure.core :refer (routes defroutes GET POST DELETE OPTIONS wrap-routes)]
     [ring.util.response :refer (response charset content-type header)]
     [ring.adapter.jetty :refer (run-jetty)]
     [cheshire.core :as json]
@@ -24,6 +24,7 @@
                         [uploader :as uploader]
                         [cascade :as cascade]
                         [stats :as stats]
+                        [authorization :as authorization]
                         [appcode :as appcode]]
     [clojure.tools.nrepl.server :as nrepl]
     [taoensso.timbre :as timbre :refer (debugf)])
@@ -101,20 +102,6 @@
   (POST "/reload" [params]
     (config/reload (:config-folder @config/settings)))
 
-  (POST "/appcode" req
-    ((auth/wrap-auth appcode/create-code) req))
-
-  (GET "/appcode" req
-    ((auth/wrap-auth appcode/list-codes) req))
-
-  ; TODO: Wrap handler with auth
-  (DELETE "/appcode/:code" [code]
-    (appcode/delete-code code))
-
-  ; TODO: Wrap handler with auth
-  (GET "/appcode/:code" [code]
-    (appcode/get-code code))
-
   (GET "/appcode/appconfig/:code" [code]
     (appcode/appconfig code))
 
@@ -122,12 +109,34 @@
 
   (route/not-found "Page not found"))
 
+(defroutes ^:private secured-endpoints
+  (GET "/secured" [] "OK")
+
+  (POST "/appcode" req
+    (appcode/create-code req))
+
+  (GET "/appcode" req
+    (appcode/list-codes req))
+
+  (DELETE "/appcode/:code" [code]
+    (appcode/delete-code code))
+
+  (GET "/appcode/:code" [code]
+    (appcode/get-code code)))
+
 (defn init []
   (quartzite-scheduler/initialize)
   (quartzite-scheduler/start)
   (appcode/init))
 
-(def app (handler/site endpoints))
+(def app
+  (handler/site
+    (routes
+      (->
+        secured-endpoints
+        (wrap-routes auth/wrap-auth)
+        (wrap-routes authorization/wrap-authorization))
+      endpoints)))
 
 (defonce nrepl-srv (atom nil))
 
