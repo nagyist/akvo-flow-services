@@ -20,8 +20,8 @@
 (defn get-roles [token]
   (if-let [jwt (try 
                  (SignedJWT/parse token)
-                (catch Exception e
-                  (errorf "Error parsing JWT" e)))]
+                 (catch Exception e
+                   (errorf "Error parsing JWT" e)))]
     (set (get-in 
            (-> jwt .getJWTClaimsSet (.getClaim "resource_access"))
            ["akvoflow" "roles"]))))
