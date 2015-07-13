@@ -129,12 +129,12 @@
   (quartzite-scheduler/start)
   (appcode/init))
 
-(def app
+(defn app [cert-file]
   (handler/site
     (routes
       (->
         secured-endpoints
-        (wrap-routes auth/wrap-auth)
+        (wrap-routes auth/wrap-auth cert-file)
         (wrap-routes authorization/wrap-authorization))
       endpoints)))
 
@@ -148,4 +148,4 @@
     (reset! nrepl-srv (nrepl/start-server :port 7888))
     (timbre/set-level! (or (:log-level cfg) :info))
     (timbre/merge-config! timbre/example-config {:timestamp-pattern "yyyy-MM-dd HH:mm:ss,SSS"})
-    (run-jetty #'app {:join? false :port (:http-port cfg)})))
+    (run-jetty (app (:cert cfg)) {:join? false :port (:http-port cfg)})))
