@@ -19,7 +19,8 @@
     [cheshire.core :as json]
     [compojure [handler :as handler] [route :as route]]
     [clojurewerkz.quartzite.scheduler :as quartzite-scheduler]
-    [akvo.commons [config :as config] [auth :as auth]]
+    [akvo.commons [config :as config]]
+    ;[akvo.commons [config :as config] [auth :as auth]]
     [akvo.flow-services [scheduler :as scheduler]
                         [uploader :as uploader]
                         [cascade :as cascade]
@@ -102,8 +103,8 @@
   (POST "/reload" [params]
     (config/reload (:config-folder @config/settings)))
 
-  (GET "/appcode/appconfig/:code" [code]
-    (appcode/appconfig code))
+  ;(GET "/appcode/appconfig/:code" [code]
+    ;(appcode/appconfig code))
 
   (route/resources "/")
 
@@ -133,9 +134,9 @@
   (handler/site
     (routes
       (->
-        secured-endpoints
-        (wrap-routes auth/wrap-auth cert-file)
-        (wrap-routes authorization/wrap-authorization))
+        secured-endpoints)
+        ;(wrap-routes auth/wrap-auth cert-file)
+        ;(wrap-routes authorization/wrap-authorization))
       endpoints)))
 
 (defonce nrepl-srv (atom nil))
