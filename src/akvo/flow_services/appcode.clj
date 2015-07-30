@@ -62,21 +62,21 @@
     (db-do-commands db-spec
       (create-table-ddl :code
         [:code :integer "PRIMARY KEY"]
-        [:instance :text]; TODO: Add an index in this column
+        [:appId :text]; TODO: Add an index in this column
         [:name :text]))
        (catch Exception e
          (errorf e "Error creating database %s" db-spec))))
 
 (defn generate-code [appId name]
   (let [code (random-code code-length)
-        res (first (execute! db-spec ["INSERT OR IGNORE INTO code(code, instance, name) VALUES(?,?,?)" code appId name]))]
+        res (first (execute! db-spec ["INSERT OR IGNORE INTO code(code, appId, name) VALUES(?,?,?)" code appId name]))]
     (if (= 1 res)
       code
       (generate-code appId name))))
 
 (defn appconfig [code]
-  (let [row (first (query db-spec ["SELECT instance FROM code WHERE code = ?" code]))
-        appId (:instance row)
+  (let [row (first (query db-spec ["SELECT appId FROM code WHERE code = ?" code]))
+        appId (:appId row)
         conf (get @config/configs appId)]
     (if conf
       (json-response (assoc conf
@@ -98,7 +98,7 @@
 
 (defn list-codes [{params :params}]
   (let [{appId :appId} params
-        rows (query db-spec ["SELECT code, name FROM code WHERE instance = ?" appId])]
+        rows (query db-spec ["SELECT code, name FROM code WHERE appId = ?" appId])]
     (json-response rows)))
 
 (defn delete-code [code]
